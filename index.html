@@ -225,9 +225,8 @@
     </div>
 
     <div class="final-cta">
-      <h3>Хотите разобраться подробно?</h3>
-      <p>Вместе посмотрим на цифры и найдём где именно уходят деньги.</p>
-      <a href="https://forms.yandex.ru/u/6a21d9111f1eb59d8aa83813" target="_blank" class="btn-consult">Записаться на консультацию</a>
+      <h3>Спасибо!</h3>
+      <p>Мы свяжемся с вами по указанному номеру и расскажем, что можно улучшить.</p>
       <button class="btn-reset" onclick="rst()">← Рассчитать заново</button>
     </div>
   </div>
@@ -340,7 +339,7 @@ function calc() {
      <div class="diag-text"><strong>${i.t}</strong>${i.d}</div></div>`
   ).join('');
 
-  sendLead({ name, phone, rev, fc, fotK, fotH, chk, fcP, fotP, primeP, loss,
+  sendLead({ name, phone, rev, fc, fotK, fotH, chk,
              website: document.getElementById('website').value });
 
   const r = document.getElementById('result');
