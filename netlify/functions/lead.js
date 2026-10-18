@@ -1,8 +1,5 @@
 // Принимает данные калькулятора и отправляет отчёт о заявке в Telegram.
 // TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID берутся из переменных окружения Netlify.
-//
-// GET на этот адрес — проверка связи: показывает, заданы ли переменные,
-// принимает ли Telegram токен и видит ли бот ваш чат.
 
 const NORM_FC = 27;      // норма фуд-коста, %
 const NORM_FOT = 28;     // ориентир по ФОТ, %
@@ -85,28 +82,6 @@ function buildReport(d) {
 exports.handler = async (event) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-
-  // Проверка связи: откройте адрес функции в браузере.
-  if (event.httpMethod === 'GET') {
-    const out = { tokenSet: Boolean(token), chatIdSet: Boolean(chatId) };
-    try {
-      if (token) {
-        const me = await tg('getMe', token);
-        out.bot = me.ok ? '@' + me.body.result.username : 'ОШИБКА: ' + (me.body.description || me.status);
-      }
-      if (token && chatId) {
-        const chat = await tg('getChat', token, { chat_id: chatId });
-        out.chat = chat.ok ? 'OK, бот видит ваш чат' : 'ОШИБКА: ' + (chat.body.description || chat.status);
-      }
-    } catch (e) {
-      out.error = String(e.message || e);
-    }
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
-      body: JSON.stringify(out, null, 2),
-    };
-  }
 
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
