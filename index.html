@@ -80,6 +80,23 @@
   input[type=text]:focus,input[type=tel]:focus{border-color:var(--gold);background:rgba(184,148,90,0.05)}
   input[type=text]::placeholder,input[type=tel]::placeholder{color:#3a3530}
   .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+  .note{font-size:11px;line-height:1.5;color:#8a8478;margin-top:10px;text-align:center}
+  .lock{position:relative;min-height:560px}
+  .lock-body{filter:blur(7px);opacity:.55;pointer-events:none;user-select:none;transition:filter .5s,opacity .5s}
+  .lock.open .lock-body{filter:none;opacity:1;pointer-events:auto;user-select:auto}
+  .lock.open{min-height:0}
+  .gate{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;padding:28px 16px}
+  .lock.open .gate{display:none}
+  .gate-card{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--gold);padding:28px 24px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+  .gate-eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:500;margin-bottom:12px}
+  .gate-card h3{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;line-height:1.2;margin-bottom:10px}
+  .gate-card p{font-size:13px;color:var(--muted);margin-bottom:18px}
+  .gate-card .field-group{gap:10px;margin-bottom:12px;text-align:left}
+  .gate-card input{font-size:16px}
+  .gate-err{font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px}
+  #thanks{display:none}
+  #thanks.show{display:block}
+  #resetLocked{margin-top:20px}
   @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   .result-hdr{animation:fadeUp .5s ease both}
   .metrics{animation:fadeUp .5s .1s ease both}
@@ -153,25 +170,9 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="sec-label">Ваши контакты</div>
-    <div class="field-group">
-      <div class="field">
-        <label for="name">Имя</label>
-        <input type="text" id="name" placeholder="Как к вам обращаться" maxlength="80" autocomplete="name">
-      </div>
-      <div class="field">
-        <label for="phone">Телефон</label>
-        <input type="tel" id="phone" placeholder="+7 999 123-45-67" maxlength="30" autocomplete="tel">
-        <div class="hint">Свяжемся и обсудим результат</div>
-      </div>
-      <input type="text" id="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-    </div>
-  </div>
-
   <div class="cta-wrap">
     <button class="btn-calc" onclick="calc()">Рассчитать фуд-кост</button>
-    <p style="font-size:11px;line-height:1.5;color:#8a8478;margin-top:10px;text-align:center">Нажимая кнопку, вы соглашаетесь на обработку ваших данных для связи по этому расчёту.</p>
+    <p class="note">Результат сразу, без регистрации</p>
   </div>
 
   <div id="result">
@@ -182,6 +183,8 @@
       <div class="res-verdict" id="rv"></div>
     </div>
 
+    <div class="lock" id="lock">
+    <div class="lock-body" id="lockBody" aria-hidden="true">
     <div class="metrics">
       <div class="metric">
         <div class="m-lbl">Потери в месяц</div>
@@ -224,12 +227,31 @@
       <div class="diag-title">Диагноз</div>
       <div id="diag-items"></div>
     </div>
+    </div>
 
-    <div class="final-cta">
-      <h3>Спасибо!</h3>
-      <p>Мы свяжемся с вами по указанному номеру и расскажем, что можно улучшить.</p>
+    <div class="gate" id="gate">
+      <div class="gate-card">
+        <div class="gate-eyebrow">Полный результат</div>
+        <h3>Сколько вы теряете в рублях — и что с этим делать</h3>
+        <p>Откроем потери в месяц и за год, прайм-кост и диагноз. Шеф-повар бесплатно разберёт ваши цифры.</p>
+        <div class="field-group">
+          <input type="text" id="name" placeholder="Ваше имя" maxlength="80" autocomplete="name">
+          <input type="text" id="contact" placeholder="Телефон или @ник в Telegram" maxlength="40" autocomplete="tel" inputmode="text">
+          <input type="text" id="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+        </div>
+        <div class="gate-err" id="gateErr"></div>
+        <button class="btn-calc" id="gateBtn" onclick="unlock()">Показать полный результат</button>
+        <p class="note">Нажимая кнопку, вы соглашаетесь на обработку ваших данных для связи по этому расчёту.</p>
+      </div>
+    </div>
+    </div>
+
+    <div class="final-cta" id="thanks">
+      <h3 id="thanksTitle">Спасибо!</h3>
+      <p>Шеф-повар свяжется с вами в течение дня и разберёт цифры.</p>
       <button class="btn-reset" onclick="rst()">← Рассчитать заново</button>
     </div>
+    <button class="btn-reset" id="resetLocked" onclick="rst()">← Рассчитать заново</button>
   </div>
 </div>
 
@@ -245,14 +267,6 @@ function calc() {
   const fotK = +document.getElementById('fot_k').value    || 0;
   const fotH = +document.getElementById('fot_h').value    || 0;
   const chk  = +document.getElementById('check').value    || 0;
-
-  const nameEl  = document.getElementById('name');
-  const phoneEl = document.getElementById('phone');
-  const name  = nameEl.value.trim();
-  const phone = phoneEl.value.trim();
-  const bad = el => { el.style.borderColor = 'var(--red)'; el.focus(); setTimeout(() => el.style.borderColor = '', 1500); };
-  if (!name) { bad(nameEl); return; }
-  if (phone.replace(/\D/g,'').length < 10) { bad(phoneEl); return; }
 
   if (!rev || !fc) {
     const el = document.getElementById('revenue');
@@ -340,34 +354,76 @@ function calc() {
      <div class="diag-text"><strong>${i.t}</strong>${i.d}</div></div>`
   ).join('');
 
-  sendLead({ name, phone, rev, fc, fotK, fotH, chk,
-             website: document.getElementById('website').value });
+  lastNums = { rev, fc, fotK, fotH, chk };
+  post({ type:'calc', ...lastNums }, 'calc');   // анонимный сигнал: человек посчитал
 
   const r = document.getElementById('result');
   r.style.display = 'block';
   setTimeout(() => r.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
 }
 
-let lastLead = '';
-function sendLead(data) {
-  const key = JSON.stringify([data.name, data.phone, data.rev, data.fc, data.fotK, data.fotH, data.chk]);
-  if (key === lastLead) return;           // не дублировать одинаковую заявку
-  lastLead = key;
-  fetch('/.netlify/functions/lead', {
+// Контакт: телефон (от 10 цифр) или ник Telegram (5–32 символа, можно с @ или ссылкой t.me)
+function parseContact(v) {
+  const s = v.trim();
+  const tg = s.replace(/^(https?:\/\/)?(t\.me\/|telegram\.me\/)/i, '').replace(/^@/, '');
+  if (/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(tg)) return { kind:'tg', value:'@' + tg };
+  if (s.replace(/\D/g, '').length >= 10 && /^[\d\s()+\-]+$/.test(s)) return { kind:'phone', value:s };
+  return null;
+}
+
+let lastNums = null;
+const sent = {};
+function post(data, kind) {
+  const key = JSON.stringify(data);
+  if (sent[kind] === key) return Promise.resolve(true);   // не дублировать одно и то же
+  sent[kind] = key;
+  return fetch('/.netlify/functions/lead', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
     keepalive: true
-  }).then(r => { if (!r.ok) lastLead = ''; }).catch(() => { lastLead = ''; });
+  }).then(r => { if (!r.ok) sent[kind] = ''; return r.ok; })
+    .catch(() => { sent[kind] = ''; return false; });
+}
+
+function unlock() {
+  const nameEl = document.getElementById('name');
+  const contEl = document.getElementById('contact');
+  const err = document.getElementById('gateErr');
+  const bad = (el, msg) => { err.textContent = msg; el.style.borderColor = 'var(--red)'; el.focus(); setTimeout(() => el.style.borderColor = '', 1500); };
+  const name = nameEl.value.trim();
+  const c = parseContact(contEl.value);
+  if (!name) return bad(nameEl, 'Укажите, как к вам обращаться');
+  if (!c) return bad(contEl, 'Нужен телефон или ник в Telegram');
+  err.textContent = '';
+  if (!lastNums) return;
+
+  post({ type:'lead', name, contact:c.value, contactKind:c.kind, ...lastNums,
+         website: document.getElementById('website').value }, 'lead');
+
+  document.getElementById('lock').classList.add('open');
+  document.getElementById('lockBody').removeAttribute('aria-hidden');
+  document.getElementById('thanksTitle').textContent = 'Спасибо, ' + name + '!';
+  document.getElementById('thanks').classList.add('show');
+  document.getElementById('resetLocked').style.display = 'none';
 }
 
 function rst() {
   document.getElementById('result').style.display = 'none';
-  ['revenue','foodcost','fot_k','fot_h','check','name','phone'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('lock').classList.remove('open');
+  document.getElementById('lockBody').setAttribute('aria-hidden', 'true');
+  document.getElementById('thanks').classList.remove('show');
+  document.getElementById('resetLocked').style.display = '';
+  document.getElementById('gateErr').textContent = '';
+  ['revenue','foodcost','fot_k','fot_h','check'].forEach(id => document.getElementById(id).value = '');
+  lastNums = null;
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Enter') calc(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (e.target && e.target.closest && e.target.closest('#gate')) unlock(); else calc();
+});
 </script>
 </body>
 </html>
