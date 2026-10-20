@@ -90,19 +90,31 @@ exports.handler = async (event) => {
 
   // ловушка для ботов: поле скрыто от людей
   if (d.website) return { statusCode: 200, body: 'ok' };
-
-  const name = clean(d.name, 80);
-  const phone = clean(d.phone, 30);
-  if (!name || phone.replace(/\D/g, '').length < 10) return { statusCode: 400, body: 'Invalid contact' };
   if (!num(d.rev) || !num(d.fc)) return { statusCode: 400, body: 'Invalid numbers' };
   if (!token || !chatId) return { statusCode: 500, body: 'Telegram is not configured' };
+
+  // Анонимный расчёт: человек посчитал, но контакт ещё не оставил
+  if (d.type === 'calc') {
+    const r = buildReport(d);
+    const text = [
+      '📊 Кто-то посчитал (без контактов)',
+      `Выручка ${rub(d.rev)} · фуд-кост ${pct(r.fcP)} · прайм-кост ${pct(r.primeP)}`,
+      r.loss > 0 ? `Потери ~${rub(r.loss)} в месяц` : 'Фуд-кост в норме',
+    ].join('\n');
+    return send(token, chatId, text);
+  }
+
+  // Заявка: контакт — телефон или ник Telegram (старое поле phone тоже принимаем)
+  const name = clean(d.name, 80);
+  const contact = parseContact(clean(d.contact || d.phone, 40));
+  if (!name || !contact) return { statusCode: 400, body: 'Invalid contact' };
 
   const r = buildReport(d);
   const parts = [
     '🔔 Новая заявка — калькулятор фуд-коста',
     '',
     `👤 ${name}`,
-    `📞 ${phone}`,
+    contact.kind === 'tg' ? `💬 Telegram: ${contact.value} (https://t.me/${contact.value.slice(1)})` : `📞 ${contact.value}`,
     '',
     '— Что ввёл клиент —',
     `Выручка за месяц: ${rub(d.rev)}`,
@@ -120,10 +132,19 @@ exports.handler = async (event) => {
   if (r.talk.length) {
     parts.push('', '— Что сказать на звонке —', ...r.talk.map(t => '• ' + t));
   }
-  const text = parts.join('\n');
+  return send(token, chatId, parts.join('\n'));
+};
 
+function parseContact(s) {
+  const tgName = s.replace(/^(https?:\/\/)?(t\.me\/|telegram\.me\/)/i, '').replace(/^@/, '');
+  if (/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(tgName)) return { kind: 'tg', value: '@' + tgName };
+  if (s.replace(/\D/g, '').length >= 10 && /^[\d\s()+\-]+$/.test(s)) return { kind: 'phone', value: s };
+  return null;
+}
+
+async function send(token, chatId, text) {
   try {
-    const sent = await tg('sendMessage', token, { chat_id: chatId, text });
+    const sent = await tg('sendMessage', token, { chat_id: chatId, text, disable_web_page_preview: true });
     if (!sent.ok) {
       console.error('Telegram sendMessage failed:', sent.status, JSON.stringify(sent.body));
       return { statusCode: 502, body: 'Telegram error' };
@@ -133,4 +154,4 @@ exports.handler = async (event) => {
     return { statusCode: 502, body: 'Telegram unreachable' };
   }
   return { statusCode: 200, body: 'ok' };
-};
+}
